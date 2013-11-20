@@ -52,14 +52,16 @@ helpContents = (name, commands) ->
 
 module.exports = (robot) ->
   robot.respond /help\s*(.*)?$/i, (msg) ->
-    cmds = robot.helpCommands()
-    filter = msg.match[1]
+    message = msg.message
+    user    = message.user.name
+    cmds    = robot.helpCommands()
+    filter  = msg.match[1]
 
     if filter
       cmds = cmds.filter (cmd) ->
         cmd.match new RegExp(filter, 'i')
       if cmds.length == 0
-        msg.send "No available commands match #{filter}"
+        robot.send({ user: { name: user }}, "No available commands match ${filter}")
         return
 
     prefix = robot.alias or robot.name
@@ -67,9 +69,8 @@ module.exports = (robot) ->
       cmd = cmd.replace /^hubot/, prefix
       cmd.replace /hubot/ig, robot.name
 
-    emit = cmds.join "\n"
-
-    msg.send emit
+    emit = cmds.join "\r"
+    robot.send({ user: { name: user }}, emit)
 
   robot.router.get "/#{robot.name}/help", (req, res) ->
     cmds = robot.helpCommands().map (cmd) ->
