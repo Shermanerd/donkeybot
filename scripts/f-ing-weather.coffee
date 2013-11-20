@@ -25,7 +25,7 @@ weather = (msg, query, cb) ->
       cb(temp, remark, flavor)
 
 module.exports = (robot) ->
-  robot.respond /(what's|what is) the weather for (.*)/i, (msg) ->
-    weather msg, msg.match[2], (temp, remark, flavor) ->
+  robot.respond /(what's|what is) the weather (for|in) (.*)/i, (msg) ->
+    weather msg, msg.match[3], (temp, remark, flavor) ->
       out = temp + " degrees " + remark + " " + flavor
       msg.send out
