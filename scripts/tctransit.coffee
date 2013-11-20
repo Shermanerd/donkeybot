@@ -9,60 +9,110 @@
 #   none
 #
 # Commands:
-#   hubot when is the next <route #> going <north/south/east/west> from <4 letter stop code OR street name>
+#   hubot list routes matching <query>
+#   hubot list <north|south|east|west>bound stops for <route #>
+#   hubot when is the next <route #> going <north/south/east/west> from <4 letter stop code>
 #
 # Author:
 #   pyro2927
 
 module.exports = (robot) ->
-  robot.respond /when is the next (.*) going (.*) from (.*)/i, (msg) ->
-    route = msg.match[1]
-    direction = msg.match[2]
-    dirNum = 4
-    if direction.toLowerCase() == "east"
-      dirNum = 2
-    else if direction.toLowerCase() == "west"
-      dirNum = 3
-    else if direction.toLowerCase() == "south"
-      dirNum = 1
+  api = new TransitAPI(robot)
 
-    stop = msg.match[3]
-    if (stop.length != 4)
-      TransitAPI.search_stop_codes(route, dirNum, stop, msg)
+  robot.respond /list routes matching (.*)/i, (msg) ->
+    query = (msg.match[1] or "").toLowerCase()
+    # Collect matching routes
+    matching = []
+    for route, name of api.routes
+      if route.toLowerCase().indexOf(query) > -1 or name.toLowerCase().indexOf(query) > -1
+        matching.push { route: route, name: name }
+    # Send matches back to user
+    if matching.length
+      for match in matching
+        robot.send { user: { name: msg.message.user.name } }, "#{match.route} - #{match.name}"
     else
-      TransitAPI.fetch_next_stop(route, dirNum, stop, msg)
+      robot.send { user: { name: msg.message.user.name } }, "No routes matched."
+
+
+  robot.respond /list (north|south|east|west)bound stops for (\d{1,3}|888x)/i, (msg) ->
+    msg.reply "One sec #{msg.message.user.name}, let me look that up."
+
+    direction = msg.match[1]
+    route     = msg.match[2]
+    dir       = api.get_direction_id direction.toLowerCase()
+
+    api.get_stops route, dir, (results) ->
+      if results
+        if results.length > 25
+          robot.send { user: { name: msg.message.user.name } }, "There are more than 25 stops. Only showing first 25."
+        for stop in results.slice(0, 25)
+          robot.send { user: { name: msg.message.user.name } }, "#{stop.key} - #{stop.name}"
+      else
+        robot.send { user: { name: msg.message.user.name } }, "No stops found."
+
+  robot.respond /when is the next (\d{1,3}|888x) going (north|south|east|west) from ([\w\d]{4})/i, (msg) ->
+    msg.reply "One sec #{msg.message.user.name}, let me look that up."
+
+    route     = msg.match[1]
+    direction = msg.match[2]
+    stop      = msg.match[3]
+    dir       = api.get_direction_id direction.toLowerCase()
+
+    api.fetch_next_stop route, dir, stop, (time) ->
+      if time
+        msg.send "The next #{route} at #{stop} is #{time}"
+      else
+        msg.send "No stops coming up."
     
 
 class TransitAPI
-  constructor: ->
-
-  fetch_next_stop: (route, dirNum, stopCode, msg) =>
-    msg.http('http://metrotransit.herokuapp.com/nextTrip?route=' + route + '&direction=' + dirNum + '&stop=' + stopCode)
+  constructor: (robot) ->
+    @routes = []
+    @robot = robot
+    @robot.http('http://metrotransit.herokuapp.com/routes')
       .get() (err, res, body) =>
-        stops = JSON.parse(body)
-        if stops.count <= 0
-          msg.send "No next stops"
-          return
-        time = stops[0].time
-        if time.match(/Min$/)
-          time = "in " + time
-        else if time.match(/:/)
-          time = "at " + time
-        msg.send "The next " + route + " at " + stops[0].stop_name + " is " + time
+        @routes = JSON.parse(body)
 
-  search_stop_codes: (route, dirNum, stopName, msg) =>
-    msg.http('http://metrotransit.herokuapp.com/stops?route=' + route + '&direction=' + dirNum)
+  # Get direction number for API
+  get_direction_id: (direction) ->
+    dir = -1
+    switch direction.toLowerCase()
+      when 'north' then dir = 4
+      when 'south' then dir = 1
+      when 'east'  then dir = 2
+      when 'west'  then dir = 3
+      else dir = 4
+    return dir
+
+  get_route: (name) =>
+    for route, title of @routes
+      if title.toLowerCase().indexOf(name.toLowerCase()) > -1
+        return { id: route, title: title }
+    return null
+
+  get_stops: (route, dir, callback) =>
+    @robot.http("http://metrotransit.herokuapp.com/stops?route=#{route}&direction=#{dir}")
       .get() (err, res, body) =>
-        stops = JSON.parse(body)
-        # too bad, no stops found for this
-        if stops.count <= 0
-          msg.send "No stops available for the " + route + " going that direction"
+        if err
+          callback(null)
+        else
+          stops = JSON.parse(body)
+          callback(stops)
+
+  fetch_next_stop: (route, dir, stopCode, callback) =>
+    @robot.http("http://metrotransit.herokuapp.com/nextTrip?route=#{route}&direction=#{dir}&stop=#{stopCode}")
+      .get() (err, res, body) =>
+        if err or res.statusCode is 500
+          callback null
           return
-        # see if any of our stops match
-        for stop in stops
-          if stop.name.toLowerCase().indexOf(stopName.toLowerCase()) > -1
-            this.fetch_next_stop(route, dirNum, stop.key, msg)
+        else
+          stops = JSON.parse(body)
+          unless stops.length
+            callback null
             return
-        msg.send "No stops found with name: " + stopName
-
-TransitAPI = new TransitAPI()
+          time = stops[0].time
+          if time.match(/Min$/)
+            time = "in " + time
+          else if time.match(/:/)
+            time = "at " + time
+          callback time
