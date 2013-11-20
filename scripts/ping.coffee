@@ -18,6 +18,10 @@ module.exports = (robot) ->
     msg.send "Server time is: #{new Date()}"
 
   robot.respond /DIE$/i, (msg) ->
-    msg.send "Goodbye, cruel world."
-    process.exit 0
+    isAdmin = (process.env.HUBOT_AUTH_ADMIN or "").toLowerCase() is msg.message.user.name.toLowerCase()
+    if isAdmin
+        msg.send "Goodbye, cruel world."
+        process.exit 0
+    else
+        msg.send "http://t.qkme.me/3uypa6.jpg"
 
