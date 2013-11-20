@@ -10,10 +10,19 @@ Util = require "util"
 
 module.exports = (robot) ->
   robot.respond /show storage$/i, (msg) ->
-    output = Util.inspect(robot.brain.data, false, 4)
-    msg.send output
+    isAdmin = (process.env.HUBOT_AUTH_ADMIN or "").toLowerCase() is msg.message.user.name.toLowerCase()
+    if isAdmin
+      output = Util.inspect(robot.brain.data, false, 4)
+      msg.send output
+    else
+      msg.send "Yeah, I'd rather not."
 
   robot.respond /show users$/i, (msg) ->
+    isAdmin = (process.env.HUBOT_AUTH_ADMIN or "").toLowerCase() is msg.message.user.name.toLowerCase()
+    unless isAdmin
+      msg.send "Nope."
+      return
+
     response = ""
 
     for own key, user of robot.brain.data.users
