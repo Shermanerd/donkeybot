@@ -8,7 +8,7 @@
 #   None
 #
 # Commands:
-#   hubot chat - Tell hubot to make something fun to chat about
+#   hubot chat - Start a new conversation
 #
 # Author:
 #   GantMan
