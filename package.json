@@ -23,7 +23,9 @@
     "hubot": ">= 2.6.0 < 3.0.0",
     "hubot-scripts": ">= 2.5.0 < 3.0.0",
     "hubot-irc": "~0.1.20",
-    "donkeybot-scripts": "git://github.com/bitwalker/donkeybot-scripts.git"
+    "donkeybot-scripts": "git://github.com/bitwalker/donkeybot-scripts.git",
+    "cleverbot-node": "~0.1.2",
+    "flip": "~0.1.0"
   },
   "engines": {
     "node": ">= 0.8.x",
