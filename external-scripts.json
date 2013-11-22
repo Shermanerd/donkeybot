@@ -1,12 +1,3 @@
 [
-    "help.coffee",
-    "karma.coffee",
-    "ping.coffee",
-    "remind.coffee",
-    "setenv.coffee",
-    "tctransit.coffee",
-    "teamcity.coffee",
-    "tell.coffee",
-    "whoisout.coffee",
-    "working-on.coffee"
+    "donkeybot-scripts"
 ]
