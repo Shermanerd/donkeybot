@@ -1,1 +1,1 @@
-web: bin/hubot -a irc -n awesome-o
+web: bin/hubot -a irc -n donkeybot
